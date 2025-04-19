@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>雲端發票 QR Code 掃描器</title>
+  <script src="https://unpkg.com/@zxing/browser@latest"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 20px; }
+    .scanner-container {
+      position: relative;
+      width: 320px;
+      height: 240px;
+      margin: auto;
+      border: 2px solid #00ff99;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+    }
+
+    .scan-line {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: #00ff99;
+      animation: scanMove 2s linear infinite;
+    }
+
+    @keyframes scanMove {
+      0% { top: 0; }
+      100% { top: 100%; }
+    }
+
+    #result {
+      max-width: 400px;
+      margin: 20px auto;
+      padding: 10px;
+      border: 1px solid #ddd;
+      background-color: #f9f9f9;
+    }
+
+    #tip {
+      color: #666;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>雲端發票 QRCode 掃描</h2>
+  <div class="scanner-container">
+    <video id="preview" autoplay muted playsinline></video>
+    <div class="overlay">
+      <div class="scan-line"></div>
+    </div>
+  </div>
+  <div id="tip">請依序掃描左邊與右邊 QR Code</div>
+  <div id="result">尚未掃描</div>
+
+  <script>
+    const codeReader = new ZXingBrowser.BrowserQRCodeReader();
+    const previewElem = document.getElementById('preview');
+    const resultElem = document.getElementById('result');
+    const tipElem = document.getElementById('tip');
+
+    let leftData = '';
+    let rightData = '';
+    let lastScanTime = 0;
+
+    async function startScan() {
+      try {
+        const devices = await ZXingBrowser.BrowserQRCodeReader.listVideoInputDevices();
+        if (devices.length === 0) {
+          resultElem.innerText = '找不到相機裝置';
+          return;
+        }
+
+        const selectedDeviceId = devices[0].deviceId;
+
+        codeReader.decodeFromVideoDevice(selectedDeviceId, previewElem, (result, err) => {
+          if (result) {
+            const now = Date.now();
+            if (now - lastScanTime < 2000) return; // 每次掃描間隔至少 2 秒
+            lastScanTime = now;
+
+            const scanned = result.text;
+            if (scanned.length > 100) {
+              rightData = scanned;
+              tipElem.innerText = "✅ 已掃右 QR Code，請掃左 QR Code";
+            } else {
+              leftData = scanned;
+              tipElem.innerText = "✅ 已掃左 QR Code，請掃右 QR Code";
+            }
+
+            if (leftData && rightData) {
+              const parsed = parseEInvoice(leftData, rightData);
+              displayResult(parsed);
+              leftData = '';
+              rightData = '';
+              tipElem.innerText = "請依序掃描下一張發票的左與右 QR Code";
+            }
+          }
+        });
+      } catch (e) {
+        resultElem.innerText = '啟動掃描器失敗：' + e;
+      }
+    }
+
+    function parseEInvoice(left, right) {
+      try {
+        const raw = atob(left);
+        const number = raw.substring(0, 10);
+        const date = raw.substring(10, 17);
+        const year = 1911 + parseInt(date.substring(0, 3));
+        const month = date.substring(3, 5);
+        const day = date.substring(5, 7);
+        const random = raw.substring(17, 21);
+        const salesAmount = parseInt(raw.substring(21, 29), 16);
+        const totalAmount = parseInt(raw.substring(29, 37), 16);
+        const buyerId = raw.substring(37, 45).replace(/\0/g, '');
+        const sellerId = raw.substring(45, 53).replace(/\0/g, '');
+        const encryption = raw.substring(53, 77);
+        const detailCount = raw.charCodeAt(77);
+
+        // 右邊的 QR Code 通常包含商品名稱等補充資訊
+        const rightInfo = right;
+
+        return {
+          發票號碼: number,
+          發票日期: `${year}-${month}-${day}`,
+          隨機碼: random,
+          銷售額: salesAmount,
+          總金額: totalAmount,
+          買方統編: buyerId,
+          賣方統編: sellerId,
+          商品筆數: detailCount,
+          商品內容補充: rightInfo
+        };
+      } catch (e) {
+        return { 錯誤: "解析失敗，QR Code 格式錯誤。" };
+      }
+    }
+
+    function displayResult(data) {
+      let html = "<h3>發票資訊</h3><ul>";
+      for (const [k, v] of Object.entries(data)) {
+        html += `<li><strong>${k}</strong>：${v}</li>`;
+      }
+      html += "</ul>";
+      resultElem.innerHTML = html;
+    }
+
+    startScan();
+  </script>
+</body>
+</html>
