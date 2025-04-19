@@ -2,23 +2,30 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>雲端發票 QR Code 掃描解析</title>
+  <title>雲端發票 QRCode 掃描器</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { font-family: sans-serif; text-align: center; margin-top: 30px; }
+    #reader { width: 300px; margin: auto; }
     #result { margin-top: 20px; padding: 15px; border: 1px solid #ccc; width: 90%; max-width: 500px; margin-left: auto; margin-right: auto; }
+    textarea { width: 100%; font-family: monospace; font-size: 14px; }
   </style>
 </head>
 <body>
 
-  <h2>雲端發票 QRCode 掃描與解析</h2>
-  <div id="reader" style="width: 300px; margin: auto;"></div>
-  <div id="result"></div>
+  <h2>雲端發票 QRCode 掃描</h2>
+  <div id="reader"></div>
+  <div id="result">尚未掃描任何內容</div>
 
   <script>
     function parseTaiwanEInvoice(rawData) {
       try {
-        const raw = atob(rawData); // base64 解碼
+        const raw = atob(rawData);
+        console.log("解碼後長度：", raw.length);
+
+        if (raw.length < 77) {
+          return { 錯誤: '資料長度不足，這可能是右邊 QRCode 或非標準格式' };
+        }
 
         const number = raw.substring(0, 10);
         const date = raw.substring(10, 17);
@@ -41,15 +48,19 @@
           賣方統編: sellerId,
         };
       } catch (err) {
-        return { 錯誤: '解析失敗，可能不是正確的發票 QRCode' };
+        return { 錯誤: 'Base64 解碼失敗，這可能不是左邊 QRCode' };
       }
     }
 
     function onScanSuccess(decodedText, decodedResult) {
       console.log("掃描結果:", decodedText);
+
       const parsed = parseTaiwanEInvoice(decodedText);
 
-      let html = "<h3>發票資訊</h3><ul>";
+      let html = `<h3>原始 QRCode 資料</h3>
+        <textarea rows="4" readonly>${decodedText}</textarea>`;
+
+      html += "<h3>發票解析結果</h3><ul>";
       for (const [key, val] of Object.entries(parsed)) {
         html += `<li><strong>${key}：</strong>${val}</li>`;
       }
@@ -60,11 +71,8 @@
 
     const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
-      { facingMode: "environment" }, // 後鏡頭
-      {
-        fps: 10,
-        qrbox: 250
-      },
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
       onScanSuccess
     ).catch(err => {
       document.getElementById("result").innerText = "無法啟動攝影機：" + err;
