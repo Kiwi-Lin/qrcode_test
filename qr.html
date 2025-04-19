@@ -2,156 +2,74 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>雲端發票 QRCode 掃描器</title>
-  <script src="https://unpkg.com/@zxing/browser@latest"></script>
+  <title>雲端發票 QR Code 掃描解析</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; margin-top: 20px; }
-    .scanner-container {
-      position: relative;
-      width: 320px;
-      height: 240px;
-      margin: auto;
-      border: 2px solid #00ff99;
-    }
-
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      pointer-events: none;
-    }
-
-    .scan-line {
-      position: absolute;
-      left: 0;
-      width: 100%;
-      height: 2px;
-      background-color: #00ff99;
-      animation: scanMove 2s linear infinite;
-    }
-
-    @keyframes scanMove {
-      0% { top: 0; }
-      100% { top: 100%; }
-    }
-
-    #result {
-      max-width: 400px;
-      margin: 20px auto;
-      padding: 10px;
-      border: 1px solid #ddd;
-      background-color: #f9f9f9;
-    }
+    body { font-family: sans-serif; text-align: center; margin-top: 30px; }
+    #result { margin-top: 20px; padding: 15px; border: 1px solid #ccc; width: 90%; max-width: 500px; margin-left: auto; margin-right: auto; }
   </style>
 </head>
 <body>
 
-  <h2>雲端發票掃描器</h2>
-  <div class="scanner-container">
-    <video id="preview" autoplay muted playsinline></video>
-    <div class="overlay">
-      <div class="scan-line"></div>
-    </div>
-  </div>
-  <div id="result">請將發票靠近掃描框</div>
+  <h2>雲端發票 QRCode 掃描與解析</h2>
+  <div id="reader" style="width: 300px; margin: auto;"></div>
+  <div id="result"></div>
 
   <script>
-    const codeReader = new ZXingBrowser.BrowserQRCodeReader();
-    const previewElem = document.getElementById('preview');
-    const resultElem = document.getElementById('result');
-
-    let pending = { left: null, right: null };
-    let lastScan = 0;
-
-    async function startScan() {
-      const devices = await ZXingBrowser.BrowserQRCodeReader.listVideoInputDevices();
-      if (devices.length === 0) {
-        resultElem.innerText = '找不到相機';
-        return;
-      }
-
-      const selectedDeviceId = devices[0].deviceId;
-
-      codeReader.decodeFromVideoDevice(selectedDeviceId, previewElem, (result, err) => {
-        if (result) {
-          const now = Date.now();
-          if (now - lastScan < 1500) return; // 每次掃描最少間隔 1.5 秒
-          lastScan = now;
-
-          const content = result.text;
-          if (!isValidBase64(content)) return;
-
-          if (content.length < 120 && !pending.left) {
-            pending.left = content;
-          } else if (content.length >= 120 && !pending.right) {
-            pending.right = content;
-          }
-
-          if (pending.left && pending.right) {
-            const parsed = parseEInvoice(pending.left, pending.right);
-            displayResult(parsed);
-            pending.left = null;
-            pending.right = null;
-          }
-        }
-      });
-    }
-
-    function isValidBase64(str) {
+    function parseTaiwanEInvoice(rawData) {
       try {
-        atob(str);
-        return true;
-      } catch (e) {
-        return false;
-      }
-    }
+        const raw = atob(rawData); // base64 解碼
 
-    function parseEInvoice(left, right) {
-      try {
-        const raw = atob(left);
         const number = raw.substring(0, 10);
         const date = raw.substring(10, 17);
         const year = 1911 + parseInt(date.substring(0, 3));
         const month = date.substring(3, 5);
         const day = date.substring(5, 7);
-        const random = raw.substring(17, 21);
+        const randomCode = raw.substring(17, 21);
         const salesAmount = parseInt(raw.substring(21, 29), 16);
         const totalAmount = parseInt(raw.substring(29, 37), 16);
         const buyerId = raw.substring(37, 45).replace(/\0/g, '');
         const sellerId = raw.substring(45, 53).replace(/\0/g, '');
-        const detailCount = raw.charCodeAt(77);
 
         return {
           發票號碼: number,
-          開立日期: `${year}-${month}-${day}`,
-          隨機碼: random,
+          發票日期: `${year}-${month}-${day}`,
+          隨機碼: randomCode,
           銷售額: salesAmount,
           總金額: totalAmount,
           買方統編: buyerId,
           賣方統編: sellerId,
-          商品筆數: detailCount,
-          商品補充資料: right
         };
-      } catch (e) {
-        return { 錯誤: "解析失敗，格式錯誤。" };
+      } catch (err) {
+        return { 錯誤: '解析失敗，可能不是正確的發票 QRCode' };
       }
     }
 
-    function displayResult(data) {
+    function onScanSuccess(decodedText, decodedResult) {
+      console.log("掃描結果:", decodedText);
+      const parsed = parseTaiwanEInvoice(decodedText);
+
       let html = "<h3>發票資訊</h3><ul>";
-      for (const [k, v] of Object.entries(data)) {
-        html += `<li><strong>${k}</strong>：${v}</li>`;
+      for (const [key, val] of Object.entries(parsed)) {
+        html += `<li><strong>${key}：</strong>${val}</li>`;
       }
       html += "</ul>";
-      resultElem.innerHTML = html;
+
+      document.getElementById("result").innerHTML = html;
     }
 
-    startScan();
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" }, // 後鏡頭
+      {
+        fps: 10,
+        qrbox: 250
+      },
+      onScanSuccess
+    ).catch(err => {
+      document.getElementById("result").innerText = "無法啟動攝影機：" + err;
+    });
   </script>
+
 </body>
 </html>
