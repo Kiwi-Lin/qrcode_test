@@ -56,16 +56,23 @@
 
     function onScanSuccess(decodedText, decodedResult) {
       console.log("掃描結果:", decodedText);
-      const parsed = parseTaiwanEInvoice(decodedText);
-
+      const length = decodedText.length;
       let html = `<h3>原始 QRCode 資料</h3>
         <textarea rows="4" readonly>${decodedText}</textarea>`;
 
-      html += "<h3>發票解析結果</h3><ul>";
-      for (const [key, val] of Object.entries(parsed)) {
-        html += `<li><strong>${key}：</strong>${val}</li>`;
+      if (length < 120) {
+        // 推測為左邊 QRCode
+        const parsed = parseTaiwanEInvoice(decodedText);
+        html += "<h3>⚡ 偵測結果：左邊 QRCode（發票資訊）</h3><ul>";
+        for (const [key, val] of Object.entries(parsed)) {
+          html += `<li><strong>${key}：</strong>${val}</li>`;
+        }
+        html += "</ul>";
+      } else {
+        // 推測為右邊 QRCode
+        html += "<h3>⚠️ 偵測結果：右邊 QRCode（明細資料）</h3>";
+        html += "<p>右邊 QRCode 無法直接解析發票資訊，請改掃左邊。</p>";
       }
-      html += "</ul>";
 
       document.getElementById("result").innerHTML = html;
     }
