@@ -6,8 +6,8 @@
   <title>台灣雲端發票掃描</title>
   <!-- Bootstrap 5.3 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- ZXing QR Library -->
-  <script src="https://unpkg.com/@zxing/library@0.18.6"></script>
+  <!-- ZXing Browser Bundle -->
+  <script src="https://unpkg.com/@zxing/browser@latest"></script>
 </head>
 <body>
   <div class="container py-4">
@@ -33,11 +33,12 @@
   </div>
 
   <script>
-    const codeReader = new ZXing.BrowserMultiFormatReader();
     const videoElement = document.getElementById('video');
     const startButton = document.getElementById('startButton');
     const invoiceInfoCard = document.getElementById('invoiceInfo');
     const infoList = document.getElementById('infoList');
+    // 建立 QR Code Reader
+    const codeReader = new ZXingBrowser.BrowserQRCodeReader();
 
     startButton.addEventListener('click', async () => {
       invoiceInfoCard.classList.add('d-none');
@@ -46,15 +47,17 @@
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         videoElement.srcObject = stream;
         await videoElement.play();
-        // 解析影像中的 QR
-        codeReader.decodeFromVideoElement(videoElement, (result, err) => {
-          if (result) {
+
+        // 呼叫 decodeOnce，掃描到就停止
+        codeReader
+          .decodeOnceFromVideoElement(videoElement)
+          .then(result => {
             // 停止鏡頭
             stream.getTracks().forEach(track => track.stop());
             videoElement.pause();
             parseInvoice(result.getText());
-          }
-        });
+          })
+          .catch(err => console.error('掃描失敗：', err));
       } catch (err) {
         console.error(err);
         alert('無法啟動相機：' + err);
@@ -72,8 +75,9 @@
         '總計': parts[5],
         '賣方統一編號': parts[6],
         '買方統一編號': parts[7] || '無',
-        '交易日期': parts[8] + '-' + parts[9] + '-' + parts[10]
+        '交易日期': `${parts[8]}/${parts[9]}/${parts[10]}`
       };
+      // 顯示資訊
       infoList.innerHTML = '';
       Object.entries(info).forEach(([key, value]) => {
         const li = document.createElement('li');
