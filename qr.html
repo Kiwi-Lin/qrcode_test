@@ -26,8 +26,9 @@
 
     function parseLeftQRCode(data) {
       try {
-        const raw = atob(data);
-        if (raw.length < 77) return { 錯誤: '資料長度不足，非標準格式' };
+        const cleanData = data.trim().replace(/[^A-Za-z0-9+/=]/g, '');
+        const raw = atob(cleanData);
+        if (raw.length < 77) return { 錯誤: `資料長度不足，非標準格式（長度 ${raw.length}）` };
 
         const number = raw.substring(0, 10);
         const date = raw.substring(10, 17);
@@ -52,7 +53,8 @@
           商品筆數: detailCount
         };
       } catch (e) {
-        return { 錯誤: 'Base64 解碼失敗，非左邊 QRCode' };
+        console.error("Base64 解碼錯誤：", e.message);
+        return { 錯誤: 'Base64 解碼失敗，非左邊 QRCode：' + e.message };
       }
     }
 
@@ -60,40 +62,43 @@
       const parts = data.split(":");
       return {
         base64段: parts[0],
-        憑證碼: parts[1],
-        商品筆數: parts[2],
-        名稱長度: parts[3],
-        區段數量: parts[4],
-        補碼: parts[5]
+        憑證碼: parts[1] || '(無資料)',
+        商品筆數: parts[2] || '(無資料)',
+        名稱長度: parts[3] || '(無資料)',
+        區段數量: parts[4] || '(無資料)',
+        補碼: parts[5] || '(無資料)'
       };
     }
 
     function displayCombinedResult() {
-      let html = `<h3>📄 發票資訊</h3><ul>`;
+      let html = `<h3>📄 發票資訊（左 QRCode）</h3><ul>`;
       const parsedLeft = parseLeftQRCode(qrLeft);
       for (const [k, v] of Object.entries(parsedLeft)) {
-        html += `<li><strong>${k}</strong>：${v}</li>`;
+        html += `<li><strong>${k}：</strong>${v}</li>`;
       }
       html += `</ul>`;
 
       const parsedRight = parseRightQRCode(qrRight);
       html += `<h3>🧾 商品區段（右 QRCode）</h3><ul>`;
       for (const [k, v] of Object.entries(parsedRight)) {
-        html += `<li><strong>${k}</strong>：${v}</li>`;
+        html += `<li><strong>${k}：</strong>${v}</li>`;
       }
       html += "</ul>";
 
       document.getElementById("result").innerHTML = html;
 
-      // 重置
+      // 自動重置
       qrLeft = null;
       qrRight = null;
     }
 
     function onScanSuccess(decodedText) {
       const now = Date.now();
-      if (now - lastScanTime < 1000) return; // 避免連續觸發
+      if (now - lastScanTime < 1000) return;
       lastScanTime = now;
+
+      console.log("掃描結果：", decodedText);
+      console.log("長度：", decodedText.length);
 
       if (decodedText.includes(":")) {
         qrRight = decodedText;
