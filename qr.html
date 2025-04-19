@@ -9,20 +9,12 @@
   <!-- ZXing Browser Bundle -->
   <script src="https://unpkg.com/@zxing/browser@latest"></script>
   <style>
-    /* 掃描區域框線 */
-    .video-container {
-      position: relative;
-    }
+    .video-container { position: relative; }
     .scan-area {
       position: absolute;
       border: 2px dashed #28a745;
-      /* 相對定位於影片中央，佔 60% 大小 */
-      width: 60%;
-      height: 60%;
-      top: 20%;
-      left: 20%;
-      box-sizing: border-box;
-      pointer-events: none;
+      width: 60%; height: 60%; top: 20%; left: 20%;
+      box-sizing: border-box; pointer-events: none;
     }
   </style>
 </head>
@@ -30,16 +22,13 @@
   <div class="container py-4">
     <h1 class="mb-4 text-center">台灣雲端發票掃描</h1>
     <div class="row mb-3">
-      <!-- 相機預覽與掃描按鈕 -->
       <div class="col-12 col-md-6">
         <div class="ratio ratio-4x3 video-container">
           <video id="video" class="w-100" muted playsinline></video>
-          <!-- 掃描區域視覺指示 -->
           <div class="scan-area"></div>
         </div>
         <button id="startButton" class="btn btn-primary mt-2">開始掃描</button>
       </div>
-      <!-- 發票資訊顯示區 -->
       <div class="col-12 col-md-6">
         <div id="invoiceInfo" class="card d-none">
           <div class="card-body">
@@ -64,70 +53,58 @@
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         videoElement.srcObject = stream;
         await videoElement.play();
-
-        // 預設掃描區域相對影片長寬的比例
-        const region = { x: 0.2, y: 0.2, width: 0.6, height: 0.6 };
+        const region = { x:0.2, y:0.2, width:0.6, height:0.6 };
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
-        // 等待 video 元資料載入完畢以取得實際尺寸
         videoElement.addEventListener('loadedmetadata', () => {
           const vw = videoElement.videoWidth;
           const vh = videoElement.videoHeight;
-          // 設定 canvas 大小為掃描區域大小
           const cropW = region.width * vw;
           const cropH = region.height * vh;
-          canvas.width = cropW;
-          canvas.height = cropH;
+          canvas.width = cropW; canvas.height = cropH;
 
-          // 每隔 500ms 掃描一次
           const intervalId = setInterval(async () => {
-            // 將掃描區域畫到 canvas
             ctx.drawImage(
               videoElement,
-              region.x * vw,
-              region.y * vh,
-              cropW,
-              cropH,
-              0,
-              0,
-              cropW,
-              cropH
+              region.x * vw, region.y * vh,
+              cropW, cropH,
+              0, 0, cropW, cropH
             );
             try {
               const result = await codeReader.decodeFromCanvas(canvas);
               clearInterval(intervalId);
-              stream.getTracks().forEach(track => track.stop());
+              stream.getTracks().forEach(t => t.stop());
               videoElement.pause();
-              parseInvoice(result.getText());
-            } catch (err) {
-              // 未解析到 QR，忽略繼續
-            }
+              parseBytes(result.getRawBytes());
+            } catch (_) {}
           }, 500);
         });
       } catch (err) {
         console.error(err);
-        alert('無法啟動相機：' + err);
+        alert('無法啟動相機：'+err);
       }
     });
 
-    function parseInvoice(text) {
-      const parts = text.split(',');
+    function parseBytes(bytes) {
+      const decoder = new TextDecoder('ascii');
+      const invoiceNumber = decoder.decode(bytes.slice(0,10));
+      const randomCode = decoder.decode(bytes.slice(10,14));
+      const sales = bytes[14] | (bytes[15] << 8);
+      const tax   = bytes[16] | (bytes[17] << 8);
+      const total = bytes[18] | (bytes[19] << 8);
       const info = {
-        '發票號碼': parts[0] + parts[1],
-        '隨機碼': parts[2],
-        '銷售額': parts[3],
-        '稅額': parts[4],
-        '總計': parts[5],
-        '賣方統一編號': parts[6],
-        '買方統一編號': parts[7] || '無',
-        '交易日期': `${parts[8]}/${parts[9]}/${parts[10]}`
+        '發票號碼': invoiceNumber,
+        '隨機碼': randomCode,
+        '銷售額': sales,
+        '稅額': tax,
+        '總計': total
       };
       infoList.innerHTML = '';
-      Object.entries(info).forEach(([key, value]) => {
+      Object.entries(info).forEach(([k,v]) => {
         const li = document.createElement('li');
         li.className = 'list-group-item';
-        li.textContent = `${key}: ${value}`;
+        li.textContent = `${k}: ${v}`;
         infoList.appendChild(li);
       });
       invoiceInfoCard.classList.remove('d-none');
