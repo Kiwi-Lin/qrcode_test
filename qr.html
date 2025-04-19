@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>雲端發票 QRCode 掃描器</title>
+  <title>雲端發票 QRCode 雙邊掃描器</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body { font-family: sans-serif; text-align: center; margin-top: 30px; }
@@ -14,20 +14,20 @@
 </head>
 <body>
 
-  <h2>雲端發票 QRCode 掃描器</h2>
-  <p id="tip">請將發票 QR Code 對準掃描框，保持約 10–15 公分距離，並避免反光</p>
+  <h2>雲端發票 QRCode 雙邊掃描器</h2>
+  <p id="tip">請將發票兩邊 QR Code 依序掃描（順序不拘）</p>
   <div id="reader"></div>
   <div id="result">尚未掃描任何內容</div>
 
   <script>
-    function parseTaiwanEInvoice(rawData) {
-      try {
-        const raw = atob(rawData);
-        console.log("解碼後長度：", raw.length);
+    let qrLeft = null;
+    let qrRight = null;
+    let lastScanTime = 0;
 
-        if (raw.length < 77) {
-          return { 錯誤: '資料長度不足，這可能是右邊 QRCode 或非標準格式' };
-        }
+    function parseLeftQRCode(data) {
+      try {
+        const raw = atob(data);
+        if (raw.length < 77) return { 錯誤: '資料長度不足，非標準格式' };
 
         const number = raw.substring(0, 10);
         const date = raw.substring(10, 17);
@@ -39,6 +39,7 @@
         const totalAmount = parseInt(raw.substring(29, 37), 16);
         const buyerId = raw.substring(37, 45).replace(/\0/g, '');
         const sellerId = raw.substring(45, 53).replace(/\0/g, '');
+        const detailCount = raw.charCodeAt(77);
 
         return {
           發票號碼: number,
@@ -48,69 +49,72 @@
           總金額: totalAmount,
           買方統編: buyerId,
           賣方統編: sellerId,
+          商品筆數: detailCount
         };
-      } catch (err) {
-        return { 錯誤: 'Base64 解碼失敗，這可能不是左邊 QRCode' };
+      } catch (e) {
+        return { 錯誤: 'Base64 解碼失敗，非左邊 QRCode' };
       }
     }
 
-    function onScanSuccess(decodedText, decodedResult) {
-      console.log("掃描結果:", decodedText);
-      const length = decodedText.length;
-      let html = `<h3>原始 QRCode 資料</h3>
-        <textarea rows="4" readonly>${decodedText}</textarea>`;
+    function parseRightQRCode(data) {
+      const parts = data.split(":");
+      return {
+        base64段: parts[0],
+        憑證碼: parts[1],
+        商品筆數: parts[2],
+        名稱長度: parts[3],
+        區段數量: parts[4],
+        補碼: parts[5]
+      };
+    }
 
-      if (length < 120) {
-        // 推測為左邊 QRCode
-        const parsed = parseTaiwanEInvoice(decodedText);
-        html += "<h3>⚡ 偵測結果：左邊 QRCode（發票資訊）</h3><ul>";
-        for (const [key, val] of Object.entries(parsed)) {
-          html += `<li><strong>${key}：</strong>${val}</li>`;
-        }
-        html += "</ul>";
-      } else {
-        // 推測為右邊 QRCode
-        html += "<h3>⚠️ 偵測結果：右邊 QRCode（明細資料）</h3>";
-        html += "<p>右邊 QRCode 無法直接解析發票資訊，請改掃左邊。</p>";
+    function displayCombinedResult() {
+      let html = `<h3>📄 發票資訊</h3><ul>`;
+      const parsedLeft = parseLeftQRCode(qrLeft);
+      for (const [k, v] of Object.entries(parsedLeft)) {
+        html += `<li><strong>${k}</strong>：${v}</li>`;
       }
+      html += `</ul>`;
+
+      const parsedRight = parseRightQRCode(qrRight);
+      html += `<h3>🧾 商品區段（右 QRCode）</h3><ul>`;
+      for (const [k, v] of Object.entries(parsedRight)) {
+        html += `<li><strong>${k}</strong>：${v}</li>`;
+      }
+      html += "</ul>";
 
       document.getElementById("result").innerHTML = html;
+
+      // 重置
+      qrLeft = null;
+      qrRight = null;
+    }
+
+    function onScanSuccess(decodedText) {
+      const now = Date.now();
+      if (now - lastScanTime < 1000) return; // 避免連續觸發
+      lastScanTime = now;
+
+      if (decodedText.includes(":")) {
+        qrRight = decodedText;
+        console.log("✅ 偵測到右 QRCode");
+      } else {
+        qrLeft = decodedText;
+        console.log("✅ 偵測到左 QRCode");
+      }
+
+      if (qrLeft && qrRight) {
+        displayCombinedResult();
+      }
     }
 
     async function startScanner() {
-      try {
-        const constraints = {
-          video: {
-            facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            zoom: 2.0
-          }
-        };
-
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        const videoTrack = stream.getVideoTracks()[0];
-        const capabilities = videoTrack.getCapabilities();
-
-        if (capabilities.zoom) {
-          await videoTrack.applyConstraints({
-            advanced: [{ zoom: capabilities.zoom.max || 2 }]
-          });
-          console.log("✅ Zoom 設定成功");
-        } else {
-          console.log("⚠️ 裝置不支援 Zoom 設定");
-        }
-
-        const html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start(
-          { deviceId: { exact: videoTrack.getSettings().deviceId } },
-          { fps: 10, qrbox: 250 },
-          onScanSuccess
-        );
-      } catch (err) {
-        console.error(err);
-        document.getElementById("result").innerText = "⚠️ 無法啟動攝影機：" + err;
-      }
+      const html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        onScanSuccess
+      );
     }
 
     startScanner();
