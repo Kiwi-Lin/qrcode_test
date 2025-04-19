@@ -1,129 +1,88 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <title>雲端發票 QRCode 雙邊掃描器</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <style>
-    body { font-family: sans-serif; text-align: center; margin-top: 30px; }
-    #reader { width: 300px; margin: auto; }
-    #result { margin-top: 20px; padding: 15px; border: 1px solid #ccc; width: 90%; max-width: 500px; margin-left: auto; margin-right: auto; }
-    textarea { width: 100%; font-family: monospace; font-size: 14px; }
-    #tip { color: #666; font-size: 14px; margin-top: 10px; }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>台灣雲端發票掃描</title>
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- ZXing QR Library -->
+  <script src="https://unpkg.com/@zxing/library@0.18.6"></script>
 </head>
 <body>
-
-  <h2>雲端發票 QRCode 雙邊掃描器</h2>
-  <p id="tip">請將發票兩邊 QR Code 依序掃描（順序不拘）</p>
-  <div id="reader"></div>
-  <div id="result">尚未掃描任何內容</div>
+  <div class="container py-4">
+    <h1 class="mb-4 text-center">台灣雲端發票掃描</h1>
+    <div class="row mb-3">
+      <!-- 相機預覽與掃描按鈕 -->
+      <div class="col-12 col-md-6">
+        <div class="ratio ratio-4x3">
+          <video id="video" class="w-100" muted playsinline></video>
+        </div>
+        <button id="startButton" class="btn btn-primary mt-2">開始掃描</button>
+      </div>
+      <!-- 發票資訊顯示區 -->
+      <div class="col-12 col-md-6">
+        <div id="invoiceInfo" class="card d-none">
+          <div class="card-body">
+            <h5 class="card-title">發票資訊</h5>
+            <ul class="list-group list-group-flush" id="infoList"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
-    let qrLeft = null;
-    let qrRight = null;
-    let lastScanTime = 0;
+    const codeReader = new ZXing.BrowserMultiFormatReader();
+    const videoElement = document.getElementById('video');
+    const startButton = document.getElementById('startButton');
+    const invoiceInfoCard = document.getElementById('invoiceInfo');
+    const infoList = document.getElementById('infoList');
 
-    function parseLeftQRCode(data) {
+    startButton.addEventListener('click', async () => {
+      invoiceInfoCard.classList.add('d-none');
       try {
-        const cleanData = data.trim().replace(/[^A-Za-z0-9+/=]/g, '');
-        const raw = atob(cleanData);
-        if (raw.length < 77) return { 錯誤: `資料長度不足，非標準格式（長度 ${raw.length}）` };
-
-        const number = raw.substring(0, 10);
-        const date = raw.substring(10, 17);
-        const year = 1911 + parseInt(date.substring(0, 3));
-        const month = date.substring(3, 5);
-        const day = date.substring(5, 7);
-        const randomCode = raw.substring(17, 21);
-        const salesAmount = parseInt(raw.substring(21, 29), 16);
-        const totalAmount = parseInt(raw.substring(29, 37), 16);
-        const buyerId = raw.substring(37, 45).replace(/\0/g, '');
-        const sellerId = raw.substring(45, 53).replace(/\0/g, '');
-        const detailCount = raw.charCodeAt(77);
-
-        return {
-          發票號碼: number,
-          發票日期: `${year}-${month}-${day}`,
-          隨機碼: randomCode,
-          銷售額: salesAmount,
-          總金額: totalAmount,
-          買方統編: buyerId,
-          賣方統編: sellerId,
-          商品筆數: detailCount
-        };
-      } catch (e) {
-        console.error("Base64 解碼錯誤：", e.message);
-        return { 錯誤: 'Base64 解碼失敗，非左邊 QRCode：' + e.message };
+        // 啟動環境鏡頭
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        videoElement.srcObject = stream;
+        await videoElement.play();
+        // 解析影像中的 QR
+        codeReader.decodeFromVideoElement(videoElement, (result, err) => {
+          if (result) {
+            // 停止鏡頭
+            stream.getTracks().forEach(track => track.stop());
+            videoElement.pause();
+            parseInvoice(result.getText());
+          }
+        });
+      } catch (err) {
+        console.error(err);
+        alert('無法啟動相機：' + err);
       }
-    }
+    });
 
-    function parseRightQRCode(data) {
-      const parts = data.split(":");
-      return {
-        base64段: parts[0],
-        憑證碼: parts[1] || '(無資料)',
-        商品筆數: parts[2] || '(無資料)',
-        名稱長度: parts[3] || '(無資料)',
-        區段數量: parts[4] || '(無資料)',
-        補碼: parts[5] || '(無資料)'
+    function parseInvoice(text) {
+      // 台灣雲端發票 QR 採逗號分隔
+      const parts = text.split(',');
+      const info = {
+        '發票號碼': parts[0] + parts[1],
+        '隨機碼': parts[2],
+        '銷售額': parts[3],
+        '稅額': parts[4],
+        '總計': parts[5],
+        '賣方統一編號': parts[6],
+        '買方統一編號': parts[7] || '無',
+        '交易日期': parts[8] + '-' + parts[9] + '-' + parts[10]
       };
+      infoList.innerHTML = '';
+      Object.entries(info).forEach(([key, value]) => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.textContent = `${key}: ${value}`;
+        infoList.appendChild(li);
+      });
+      invoiceInfoCard.classList.remove('d-none');
     }
-
-    function displayCombinedResult() {
-      let html = `<h3>📄 發票資訊（左 QRCode）</h3><ul>`;
-      const parsedLeft = parseLeftQRCode(qrLeft);
-      for (const [k, v] of Object.entries(parsedLeft)) {
-        html += `<li><strong>${k}：</strong>${v}</li>`;
-      }
-      html += `</ul>`;
-
-      const parsedRight = parseRightQRCode(qrRight);
-      html += `<h3>🧾 商品區段（右 QRCode）</h3><ul>`;
-      for (const [k, v] of Object.entries(parsedRight)) {
-        html += `<li><strong>${k}：</strong>${v}</li>`;
-      }
-      html += "</ul>";
-
-      document.getElementById("result").innerHTML = html;
-
-      // 自動重置
-      qrLeft = null;
-      qrRight = null;
-    }
-
-    function onScanSuccess(decodedText) {
-      const now = Date.now();
-      if (now - lastScanTime < 1000) return;
-      lastScanTime = now;
-
-      console.log("掃描結果：", decodedText);
-      console.log("長度：", decodedText.length);
-
-      if (decodedText.includes(":")) {
-        qrRight = decodedText;
-        console.log("✅ 偵測到右 QRCode");
-      } else {
-        qrLeft = decodedText;
-        console.log("✅ 偵測到左 QRCode");
-      }
-
-      if (qrLeft && qrRight) {
-        displayCombinedResult();
-      }
-    }
-
-    async function startScanner() {
-      const html5QrCode = new Html5Qrcode("reader");
-      html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        onScanSuccess
-      );
-    }
-
-    startScanner();
   </script>
-
 </body>
 </html>
