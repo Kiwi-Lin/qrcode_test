@@ -1,0 +1,40 @@
+body {
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+#scanner-container {
+  position: relative;
+  width: 80%;
+  max-width: 500px;
+  border: 1px solid #ccc;
+  margin-bottom: 20px;
+}
+
+#video {
+  display: block; /* 確保 video 填滿容器 */
+  width: 100%;
+  height: auto;
+}
+
+#controls {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px; /* 按鈕間距 */
+}
+
+#result-container {
+  width: 80%;
+  max-width: 500px;
+  border: 1px dashed #eee;
+  padding: 15px;
+  background-color: #f9f9f9;
+}
+
+#result-container p {
+  word-break: break-all; /* 避免長字串溢出 */
+}
