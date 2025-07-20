@@ -78,6 +78,11 @@
             <div class="scanner-instruction">
               請掃描電子發票左側的 QR Code<br /><small>(使用須知與更多說明)</small>
             </div>
+            <div id="scan-success" 
+                style="display:none;position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);z-index:20;" 
+                class="text-center w-100">
+              <div class="bg-success text-white rounded-4 p-4 fs-3 shadow">🎉 掃描成功！</div>
+            </div>
           </div>
         </div>
       </div>
@@ -111,7 +116,6 @@ function startHtml5Qrcode() {
     (decodedText, decodedResult) => {
       if (decodedText === lastResult) return; // 防止重複掃描
       lastResult = decodedText;
-      // 電子發票解析
       if (decodedText.length >= 77) {
         try {
           const num = decodedText.substring(0, 10);
@@ -120,17 +124,24 @@ function startHtml5Qrcode() {
           const amountHex = decodedText.substring(29, 37);
           const amount = parseInt(amountHex, 16);
           const date = `${parseInt(dateStr.substring(0, 3), 10) + 1911}-${dateStr.substring(3, 5)}-${dateStr.substring(5, 7)}`;
-          if (/^[A-Z]{2}\\d{8}$/.test(num)) {
+          if (/^[A-Z]{2}\d{8}$/.test(num)) {
             lastInvoiceNumber.textContent = num;
             lastInvoiceDate.textContent = date;
             lastRandomCode.textContent = rand;
             lastAmount.textContent = amount;
-            html5Qr.stop();
-            html5Qr.clear();
-            setTimeout(()=>{
-              alert(`掃描成功！\\n發票號碼：${num}\\n日期：${date}\\n金額：${amount} 元`);
+
+            // 震動提示
+            if (navigator.vibrate) {
+              navigator.vibrate(300);
+            }
+
+            // 顯示自訂掃描成功提示
+            document.getElementById("scan-success").style.display = "block";
+            setTimeout(() => {
               bootstrap.Modal.getInstance(scanModal).hide();
-            }, 150);
+              document.getElementById("scan-success").style.display = "none";
+              if (html5Qr) { html5Qr.stop(); html5Qr.clear(); }
+            }, 1200);
           }
         } catch (e) {
           console.error(e);
