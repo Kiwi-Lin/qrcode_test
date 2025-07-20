@@ -1,257 +1,312 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>雲端發票掃描器</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-  <style>
-    body { background-color: #f8f9fa; }
-    .video-container { position: relative; width: 100%; aspect-ratio: 3/4; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>雲端發票掃描器</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+      body {
+        background-color: #f8f9fa;
+      }
 
-    #video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+      .video-container {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 3/4;
+      }
 
-    /* 四角掃描框 */
-    .scanner-corners {
-      position: absolute;
-      width: 60%;
-      aspect-ratio: 1/1;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      z-index: 12;
-    }
-    .corner {
-      position: absolute;
-      width: 28px; height: 28px;
-      border: 4px solid #00c3ff;
-      border-radius: 6px;
-      box-sizing: border-box;
-    }
-    .corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
-    .corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
-    .corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
-    .corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
+      #video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
 
-    .scanner-mask {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      z-index: 9; pointer-events: none;
-    }
-    .scanner-mask::before {
-      content: '';
-      position: absolute;
-      width: 60%;
-      aspect-ratio: 1 / 1;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: rgba(0,0,0,0);
-      box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
-      pointer-events: none;
-      border-radius: 0;
-    }
-    .scanner-instruction {
-      position: absolute;
-      top: 12%;
-      width: 100%;
-      text-align: center;
-      color: white;
-      font-size: 1rem;
-      font-weight: bold;
-      text-shadow: 0 0 5px black;
-      z-index: 15;
-    }
-    #canvas { display: none; }
-  </style>
-</head>
-<body class="p-4">
-  <h1 class="mb-4">雲端發票 QR Code 掃描</h1>
-  <div class="mb-4">
-    <p><strong>最近掃描：</strong></p>
-    <p>發票號碼：<span id="last-invoice-number">-</span></p>
-    <p>發票日期：<span id="last-invoice-date">-</span></p>
-    <p>隨機碼：<span id="last-random-code">-</span></p>
-    <p>總金額 (含稅)：<span id="total-amount">-</span> 元</p>
-  </div>
+      /* 四角掃描框 */
+      .scanner-corners {
+        position: absolute;
+        width: 60%;
+        aspect-ratio: 1/1;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 12;
+      }
 
-  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scanModal">
-    開始掃描
-  </button>
+      .corner {
+        position: absolute;
+        width: 45px;
+        height: 45px;
+        border: 10px solid #abb3b6;
+        border-radius: 1px;
+        box-sizing: border-box;
+      }
 
-  <!-- Modal -->
-  <div class="modal fade" id="scanModal" tabindex="-1" aria-labelledby="scanModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-fullscreen">
-      <div class="modal-content bg-dark text-white">
-        <div class="modal-header border-0">
-          <h5 class="modal-title" id="scanModalLabel">電子發票掃描</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body p-0 position-relative">
-          <div class="video-container">
-            <video id="video" playsinline></video>
-            <canvas id="canvas"></canvas>
-            <div class="scanner-mask"></div>
-            <div class="scanner-corners">
-              <div class="corner tl"></div>
-              <div class="corner tr"></div>
-              <div class="corner bl"></div>
-              <div class="corner br"></div>
-            </div>
-            <div class="scanner-instruction">
-              請掃描電子發票左側的 QR Code<br /><small>(使用須知與更多說明)</small>
-            </div>
-            <div id="scan-success"
-              style="display:none;position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);z-index:20;"
-              class="text-center w-100">
-              <div class="bg-success text-white rounded-4 p-4 fs-3 shadow">🎉 掃描成功！</div>
-              <div class="mt-3 fs-5 text-start" id="scan-detail"></div>
+      .corner.tl {
+        top: 0;
+        left: 0;
+        border-right: none;
+        border-bottom: none;
+      }
+
+      .corner.tr {
+        top: 0;
+        right: 0;
+        border-left: none;
+        border-bottom: none;
+      }
+
+      .corner.bl {
+        bottom: 0;
+        left: 0;
+        border-right: none;
+        border-top: none;
+      }
+
+      .corner.br {
+        bottom: 0;
+        right: 0;
+        border-left: none;
+        border-top: none;
+      }
+
+      .scanner-mask {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9;
+        pointer-events: none;
+      }
+
+      .scanner-mask::before {
+        content: "";
+        position: absolute;
+        width: 60%;
+        aspect-ratio: 1 / 1;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(0, 0, 0, 0);
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        border-radius: 0;
+      }
+
+      .scanner-instruction {
+        position: absolute;
+        top: 12%;
+        width: 100%;
+        text-align: center;
+        color: white;
+        font-size: 1rem;
+        font-weight: bold;
+        text-shadow: 0 0 5px black;
+        z-index: 15;
+      }
+
+      #canvas {
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="p-4">
+    <h1 class="mb-4">雲端發票 QR Code 掃描</h1>
+    <div class="mb-4">
+      <p><strong>最近掃描：</strong></p>
+      <p>發票號碼：<span id="last-invoice-number">-</span></p>
+      <p>發票日期：<span id="last-invoice-date">-</span></p>
+      <p>隨機碼：<span id="last-random-code">-</span></p>
+      <p>總金額 (含稅)：<span id="total-amount">-</span> 元</p>
+    </div>
+
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scanModal">
+      開始掃描
+    </button>
+
+    <!-- Modal -->
+    <div class="modal fade" id="scanModal" tabindex="-1" aria-labelledby="scanModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content bg-dark text-white">
+          <div class="modal-header border-0">
+            <h5 class="modal-title" id="scanModalLabel">電子發票掃描</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-0 position-relative">
+            <div class="video-container">
+              <video id="video" playsinline></video>
+              <canvas id="canvas"></canvas>
+              <div class="scanner-mask"></div>
+              <div class="scanner-corners">
+                <div class="corner tl"></div>
+                <div class="corner tr"></div>
+                <div class="corner bl"></div>
+                <div class="corner br"></div>
+              </div>
+              <div class="scanner-instruction">
+                請掃描電子發票左側的 QR Code<br /><small
+                  >(使用須知與更多說明)</small
+                >
+              </div>
+              <div id="scan-success" style="display: none; position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%); z-index: 20;" class="text-center w-100">
+                <div class="bg-success text-white rounded-4 p-4 fs-3 shadow">
+                  🎉 掃描成功！
+                </div>
+                <div class="mt-3 fs-5 text-start" id="scan-detail"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-<script>
-const video = document.getElementById("video");
-const canvasElement = document.getElementById("canvas");
-const canvas = canvasElement.getContext("2d");
+    <script>
+      const video = document.getElementById("video");
+      const canvasElement = document.getElementById("canvas");
+      const canvas = canvasElement.getContext("2d");
 
-const lastInvoiceNumber = document.getElementById("last-invoice-number");
-const lastInvoiceDate = document.getElementById("last-invoice-date");
-const lastRandomCode = document.getElementById("last-random-code");
-const totalAmount = document.getElementById("total-amount");
-const scanSuccess = document.getElementById("scan-success");
-const scanDetail = document.getElementById("scan-detail");
+      const lastInvoiceNumber = document.getElementById("last-invoice-number");
+      const lastInvoiceDate = document.getElementById("last-invoice-date");
+      const lastRandomCode = document.getElementById("last-random-code");
+      const totalAmount = document.getElementById("total-amount");
+      const scanSuccess = document.getElementById("scan-success");
+      const scanDetail = document.getElementById("scan-detail");
 
-let stream = null;
-let scanning = false;
-let currentTrack = null;
-let capabilities = null;
+      let stream = null;
+      let scanning = false;
+      let currentTrack = null;
+      let capabilities = null;
 
-async function startScan() {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "environment",
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
-    });
-    video.srcObject = stream;
-    await video.play();
-    currentTrack = stream.getVideoTracks()[0];
-    capabilities = currentTrack.getCapabilities?.();
-    if (capabilities?.zoom) {
-      await currentTrack.applyConstraints({
-        advanced: [
-          { zoom: Math.min(2.75, capabilities.zoom.max || 2.75) },
-        ],
-      });
-    }
-    scanning = true;
-    requestAnimationFrame(tick);
-  } catch (err) {
-    alert("無法啟動相機: " + err.message);
-  }
-}
+      async function startScan() {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: "environment",
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            },
+          });
+          video.srcObject = stream;
+          await video.play();
+          currentTrack = stream.getVideoTracks()[0];
+          capabilities = currentTrack.getCapabilities?.();
+          if (capabilities?.zoom) {
+            await currentTrack.applyConstraints({
+              advanced: [
+                { zoom: Math.min(2.75, capabilities.zoom.max || 2.75) },
+              ],
+            });
+          }
+          scanning = true;
+          requestAnimationFrame(tick);
+        } catch (err) {
+          alert("無法啟動相機: " + err.message);
+        }
+      }
 
-function stopScan() {
-  if (stream) {
-    stream.getTracks().forEach((track) => track.stop());
-    video.srcObject = null;
-    stream = null;
-  }
-  scanning = false;
-}
+      function stopScan() {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+          video.srcObject = null;
+          stream = null;
+        }
+        scanning = false;
+      }
 
-function tick() {
-  if (!scanning || video.readyState !== video.HAVE_ENOUGH_DATA) return;
-  canvasElement.width = video.videoWidth;
-  canvasElement.height = video.videoHeight;
-  canvas.drawImage(
-    video,
-    0,
-    0,
-    canvasElement.width,
-    canvasElement.height
-  );
+      function tick() {
+        if (!scanning || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+        canvasElement.width = video.videoWidth;
+        canvasElement.height = video.videoHeight;
+        canvas.drawImage(
+          video,
+          0,
+          0,
+          canvasElement.width,
+          canvasElement.height
+        );
 
-  // 計算中央正方形掃描區域
-  const cropX = canvasElement.width * 0.2;
-  const cropY = canvasElement.height * 0.2;
-  const cropWidth = canvasElement.width * 0.6;
-  const cropHeight = canvasElement.height * 0.6;
-  const cropped = canvas.getImageData(
-    cropX,
-    cropY,
-    cropWidth,
-    cropHeight
-  );
+        // 計算中央正方形掃描區域
+        const cropX = canvasElement.width * 0.2;
+        const cropY = canvasElement.height * 0.2;
+        const cropWidth = canvasElement.width * 0.6;
+        const cropHeight = canvasElement.height * 0.6;
+        const cropped = canvas.getImageData(
+          cropX,
+          cropY,
+          cropWidth,
+          cropHeight
+        );
 
-  const code = jsQR(cropped.data, cropWidth, cropHeight, {
-    inversionAttempts: "dontInvert",
-  });
+        const code = jsQR(cropped.data, cropWidth, cropHeight, {
+          inversionAttempts: "dontInvert",
+        });
 
-  if (code?.data?.length >= 77) {
-    try {
-      const d = code.data;
-      const num = d.substring(0, 10);
-      const dateStr = d.substring(10, 17);
-      const rand = d.substring(17, 21);
-      const amountHex = d.substring(29, 37);
-      const amount = parseInt(amountHex, 16);
-      const date = `${parseInt(dateStr.substring(0, 3), 10) + 1911}-${dateStr.substring(3, 5)}-${dateStr.substring(5, 7)}`;
-      if (/^[A-Z]{2}\d{8}$/.test(num)) {
-        lastInvoiceNumber.textContent = num;
-        lastInvoiceDate.textContent = date;
-        lastRandomCode.textContent = rand;
-        totalAmount.textContent = amount;
+        if (code?.data?.length >= 77) {
+          try {
+            const d = code.data;
+            const num = d.substring(0, 10);
+            const dateStr = d.substring(10, 17);
+            const rand = d.substring(17, 21);
+            const amountHex = d.substring(29, 37);
+            const amount = parseInt(amountHex, 16);
+            const date = `${
+              parseInt(dateStr.substring(0, 3), 10) + 1911
+            }-${dateStr.substring(3, 5)}-${dateStr.substring(5, 7)}`;
+            if (/^[A-Z]{2}\d{8}$/.test(num)) {
+              lastInvoiceNumber.textContent = num;
+              lastInvoiceDate.textContent = date;
+              lastRandomCode.textContent = rand;
+              totalAmount.textContent = amount;
 
-        // 震動提示
-        if (navigator.vibrate) navigator.vibrate(300);
+              // 震動提示
+              if (navigator.vibrate) {
+                navigator.vibrate(300);
+              }
 
-        // 顯示自訂掃描成功提示
-        scanDetail.innerHTML = `
+              // 顯示自訂掃描成功提示
+              scanDetail.innerHTML = `
           <div>發票號碼：<b>${num}</b></div>
           <div>日期：${date}</div>
           <div>隨機碼：${rand}</div>
           <div>金額：${amount} 元</div>
         `;
-        scanSuccess.style.display = "block";
-        scanning = false;
-        setTimeout(() => {
-          scanSuccess.style.display = "none";
-          const modal = bootstrap.Modal.getInstance(document.getElementById("scanModal"));
-          modal.hide();
-        }, 1500);
-        return;
+              scanSuccess.style.display = "block";
+              scanning = false;
+              setTimeout(() => {
+                scanSuccess.style.display = "none";
+                const modal = bootstrap.Modal.getInstance(
+                  document.getElementById("scanModal")
+                );
+                modal.hide();
+              }, 1500);
+              return;
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        if (scanning) requestAnimationFrame(tick);
       }
-    } catch (e) {
-      console.error(e);
-    }
-  }
-  if (scanning) requestAnimationFrame(tick);
-}
 
-document
-  .getElementById("scanModal")
-  .addEventListener("shown.bs.modal", () => {
-    startScan();
-  });
+      document
+        .getElementById("scanModal")
+        .addEventListener("shown.bs.modal", () => {
+          startScan();
+        });
 
-document
-  .getElementById("scanModal")
-  .addEventListener("hidden.bs.modal", () => {
-    stopScan();
-    scanSuccess.style.display = "none";
-  });
-</script>
-</body>
+      document
+        .getElementById("scanModal")
+        .addEventListener("hidden.bs.modal", () => {
+          stopScan();
+          scanSuccess.style.display = "none";
+        });
+    </script>
+  </body>
 </html>
