@@ -73,7 +73,7 @@
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background-color: rgba(255, 255, 255, 0);
+        background-color: rgba(0, 0, 0, 0);
         box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
         z-index: 1;
         pointer-events: none;
@@ -92,6 +92,7 @@
       <p>發票號碼：<span id="last-invoice-number">-</span></p>
       <p>發票日期：<span id="last-invoice-date">-</span></p>
       <p>隨機碼：<span id="last-random-code">-</span></p>
+      <p>總金額 (含稅)：<span id="total-amount">-</span> 元</p>
     </div>
 
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scanModal">
@@ -139,6 +140,7 @@
       const lastInvoiceNumber = document.getElementById("last-invoice-number");
       const lastInvoiceDate = document.getElementById("last-invoice-date");
       const lastRandomCode = document.getElementById("last-random-code");
+      const totalAmount = document.getElementById("total-amount");
 
       let stream = null;
       let scanning = false;
@@ -216,18 +218,20 @@
             const rand = d.substring(17, 21);
             const amountHex = d.substring(29, 37);
             const amount = parseInt(amountHex, 16);
-            const date = `${
-              parseInt(dateStr.substring(0, 3), 10) + 1911
-            }-${dateStr.substring(3, 5)}-${dateStr.substring(5, 7)}`;
+            const date = `${parseInt(dateStr.substring(0, 3), 10) + 1911}-${dateStr.substring(3, 5)}-${dateStr.substring(5, 7)}`;
+
             if (/^[A-Z]{2}\d{8}$/.test(num)) {
               lastInvoiceNumber.textContent = num;
               lastInvoiceDate.textContent = date;
               lastRandomCode.textContent = rand;
+              totalAmount.textContent = amount;
+
               scanning = false;
               alert(`掃描成功！\n發票號碼：${num}\n日期：${date}\n金額：${amount} 元`);
               const modal = bootstrap.Modal.getInstance(
                 document.getElementById("scanModal")
               );
+              
               modal.hide();
             }
           } catch (e) {
