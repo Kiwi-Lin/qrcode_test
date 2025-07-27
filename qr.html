@@ -14,17 +14,17 @@
       position: relative;
       width: 100%;
       aspect-ratio: 3/4;
-      background: #222;
-      border-radius: 22px;
+      background: #232323;
+      border-radius: 18px;
       overflow: hidden;
-      box-shadow: 0 4px 28px rgba(0,0,0,0.11);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
     }
     #video {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: 22px;
-      background: #2a2a2a;
+      border-radius: 18px;
+      background: #222;
     }
     .scanner-corners {
       position: absolute;
@@ -37,18 +37,18 @@
     }
     .corner {
       position: absolute;
-      width: 34px;
-      height: 34px;
-      border: 5px solid #d2dee6;
-      border-radius: 11px;
+      width: 32px;
+      height: 32px;
+      border: 4px solid #b8c9cf;
+      border-radius: 10px;
       box-sizing: border-box;
       background: none;
-      filter: drop-shadow(0 2px 8px rgba(0,0,0,.13));
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,.10));
       transition: border-color 0.35s, box-shadow 0.35s;
     }
     .corner.success {
-      border-color: #28d965 !important;
-      box-shadow: 0 0 14px #28d96590;
+      border-color: #28a745 !important;
+      box-shadow: 0 0 10px #28a74550;
     }
     .corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
     .corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
@@ -57,7 +57,7 @@
     .scanner-mask {
       position: absolute; top:0; left:0; width:100%; height:100%; z-index:9;
       pointer-events: none;
-      background: linear-gradient(135deg,rgba(44,62,80,.13),rgba(0,0,0,.35) 70%);
+      background: linear-gradient(135deg,rgba(44,62,80,.08),rgba(0,0,0,.20) 70%);
     }
     .scanner-mask::before {
       content: "";
@@ -68,22 +68,22 @@
       left: 50%;
       transform: translate(-50%, -50%);
       background: none;
-      box-shadow: 0 0 0 9999px rgba(0,0,0,0.65);
-      border-radius: 18px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.62);
+      border-radius: 14px;
       pointer-events: none;
     }
     .scanner-instruction {
       position: absolute;
-      top: 10%;
+      top: 11%;
       width: 100%;
       text-align: center;
       color: #fff;
-      font-size: 1.06rem;
+      font-size: 1.07rem;
       font-weight: 600;
       text-shadow: 0 2px 12px #000b;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.02em;
       z-index: 15;
-      filter: drop-shadow(0 2px 8px #0a065a20);
+      filter: drop-shadow(0 2px 8px #0a065a15);
     }
     .scan-success-message {
       position: absolute;
@@ -91,62 +91,36 @@
       left: 50%;
       transform: translate(-50%, -50%);
       z-index: 16;
-      min-width: 180px;
-      padding: 2rem 2.2rem 1.3rem 2.2rem;
-      background: rgba(40,167,69,0.85);
-      border-radius: 20px;
-      box-shadow: 0 8px 28px 0 rgba(40,167,69,.12),0 0 0 5px rgba(40,167,69,.12);
-      backdrop-filter: blur(12px);
+      min-width: 120px;
+      padding: 1.2rem 2.1rem 1.2rem 2.1rem;
+      background: rgba(40,167,69,0.87);
+      border-radius: 16px;
+      box-shadow: 0 6px 22px 0 rgba(40,167,69,.10),0 0 0 3px rgba(40,167,69,.10);
+      backdrop-filter: blur(8px);
       display: none;
       flex-direction: column;
       align-items: center;
-      gap: 0.7rem;
-      animation: fadeIn 0.35s cubic-bezier(.32,.72,.43,1.27);
-      border: 1.5px solid #3fe58477;
+      gap: 0.5rem;
+      border: 1.5px solid #3fe58450;
+      text-align: center;
     }
-    .scan-success-message .checkmark {
-      width: 64px; height: 64px;
+    .static-check {
       display: block;
-      stroke: #fff;
-      stroke-width: 4;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      fill: none;
-      margin: 0 auto 0.3rem auto;
-      filter: drop-shadow(0 4px 10px #49f79755);
-      background: none;
+      margin: 0 auto 0.2rem auto;
     }
-    .scan-success-message .checkmark-circle {
-      stroke-dasharray: 166;
-      stroke-dashoffset: 166;
-      animation: stroke 0.6s forwards;
-    }
-    .scan-success-message .checkmark-check {
-      stroke-dasharray: 48;
-      stroke-dashoffset: 48;
-      animation: stroke 0.4s 0.4s forwards;
-    }
-    .scan-success-message .success-text {
-      font-size: 1.45rem;
+    .success-text {
+      font-size: 1.32rem;
       color: #fff;
       font-weight: 700;
-      text-shadow: 0 1px 10px #31ffb933, 0 1px 4px #202b;
+      text-shadow: 0 1px 8px #3fe58430;
       letter-spacing: 0.01em;
-      margin-top: 0.05rem;
       user-select: none;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translate(-50%,-65%) scale(0.91);}
-      to   { opacity: 1; transform: translate(-50%,-50%) scale(1);}
-    }
-    @keyframes stroke {
-      to { stroke-dashoffset: 0; }
     }
     #canvas { display: none; }
     @media (max-width:600px){
-      .video-container { border-radius: 10px; }
+      .video-container { border-radius: 9px; }
       .scanner-corners{ width: 95%; }
-      .scan-success-message { min-width:0; padding:1.5rem 0.7rem; }
+      .scan-success-message { min-width:0; padding:1.2rem 0.7rem; }
     }
   </style>
 </head>
@@ -180,9 +154,9 @@
               <div class="corner bl"></div>
               <div class="corner br"></div>
               <div class="scan-success-message" id="scanSuccessMsg">
-                <svg class="checkmark" viewBox="0 0 52 52">
-                  <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none" />
-                  <path class="checkmark-check" fill="none" d="M14 27l7 7 17-17" />
+                <svg class="static-check" width="40" height="40" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="12" fill="#28a745" opacity="0.14"/>
+                  <path d="M7 13l3 3 7-7" stroke="#28a745" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                 </svg>
                 <div class="success-text">掃描成功</div>
               </div>
@@ -207,7 +181,6 @@ const $seller_id = $('#seller_id');
 const $buyer_id = $('#buyer_id');
 const $corners = $('.corner');
 const $scan_message = $('#scanSuccessMsg');
-
 let stream = null;
 let scanning = false;
 let current_track = null;
@@ -216,21 +189,11 @@ let scanTimeout = null;
 
 function resetScanMessage() {
   $scan_message.hide();
-  // 強制重啟 SVG 動畫
-  let $svg = $scan_message.find('.checkmark');
-  let $circle = $svg.find('.checkmark-circle');
-  let $check = $svg.find('.checkmark-check');
-  $circle.css('animation', 'none');
-  $check.css('animation', 'none');
-  void $svg[0].offsetWidth; // 強制 reflow
-  $circle.css('animation', null);
-  $check.css('animation', null);
 }
 async function start_scan() {
+  $corners.removeClass('success');
+  resetScanMessage();
   try {
-    // 每次進入掃描都要重設四角和成功提示
-    $corners.removeClass('success');
-    resetScanMessage();
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: "environment",
@@ -302,16 +265,15 @@ function tick() {
 
         if (navigator.vibrate) navigator.vibrate(300);
         $corners.addClass('success');
-        resetScanMessage(); // reset SVG
         $scan_message.fadeIn(120);
 
         scanning = false;
 
         scanTimeout = setTimeout(() => {
-          $scan_message.fadeOut(220);
+          $scan_message.fadeOut(200);
           const modal = bootstrap.Modal.getInstance($('#scanModal')[0]);
           if(modal) modal.hide();
-        }, 1400);
+        }, 1300);
         return;
       }
     } catch (e) {
