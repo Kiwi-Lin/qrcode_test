@@ -51,33 +51,10 @@
       border-color: #28a745 !important;
     }
 
-    .corner.tl {
-      top: 0;
-      left: 0;
-      border-right: none;
-      border-bottom: none;
-    }
-
-    .corner.tr {
-      top: 0;
-      right: 0;
-      border-left: none;
-      border-bottom: none;
-    }
-
-    .corner.bl {
-      bottom: 0;
-      left: 0;
-      border-right: none;
-      border-top: none;
-    }
-
-    .corner.br {
-      bottom: 0;
-      right: 0;
-      border-left: none;
-      border-top: none;
-    }
+    .corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+    .corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+    .corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+    .corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
 
     .scanner-mask {
       position: absolute;
@@ -116,15 +93,77 @@
 
     .scan-success-message {
       position: absolute;
-      top: 42%;
+      top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       z-index: 16;
-      font-size: 2rem;
-      color: #28a745;
-      font-weight: bold;
-      text-shadow: 0 0 6px black;
+      padding: 2rem;
+      background: rgba(40, 167, 69, 0.85);
+      border-radius: 16px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      text-align: center;
+      animation: fadeIn 0.4s ease-out;
       display: none;
+    }
+
+    .checkmark {
+      width: 72px;
+      height: 72px;
+      stroke: #fff;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      margin: 0 auto 0.5rem;
+      animation: scaleIn 0.3s ease-out;
+    }
+
+    .checkmark-circle {
+      stroke-dasharray: 166;
+      stroke-dashoffset: 166;
+      animation: stroke 0.6s forwards;
+    }
+
+    .checkmark-check {
+      stroke-dasharray: 48;
+      stroke-dashoffset: 48;
+      animation: stroke 0.4s 0.4s forwards;
+    }
+
+    .success-text {
+      font-size: 1.5rem;
+      color: white;
+      font-weight: 600;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -40%);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    @keyframes stroke {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @keyframes scaleIn {
+      0% {
+        transform: scale(0.7);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
     }
 
     #canvas {
@@ -163,7 +202,13 @@
               <div class="corner tr"></div>
               <div class="corner bl"></div>
               <div class="corner br"></div>
-              <div class="scan-success-message">🎉 掃描成功</div>
+              <div class="scan-success-message">
+                <svg class="checkmark" viewBox="0 0 52 52">
+                  <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none" />
+                  <path class="checkmark-check" fill="none" d="M14 27l7 7 17-17" />
+                </svg>
+                <div class="success-text">掃描成功</div>
+              </div>
             </div>
             <div class="scanner-instruction">
               請掃描電子發票左側的 QR Code<br /><small>(使用須知與更多說明)</small>
@@ -263,7 +308,6 @@
           const date = `${parseInt(date_str.substring(0, 3), 10) + 1911}-${date_str.substring(3, 5)}-${date_str.substring(5, 7)}`;
 
           if (/^[A-Z]{2}\d{8}$/.test(num)) {
-            // 更新主頁顯示資料
             $last_invoice_number.text(num);
             $last_invoice_date.text(date);
             $last_random_code.text(rand);
@@ -271,7 +315,6 @@
             $buyer_id.text(buyer);
             $seller_id.text(seller);
 
-            // 顯示成功訊息與特效
             if (navigator.vibrate) navigator.vibrate(300);
             $corners.addClass('success');
             $scan_message.fadeIn();
