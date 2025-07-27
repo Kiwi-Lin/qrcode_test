@@ -10,7 +10,7 @@
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <style>
     body { background-color: #f8f9fa; }
-    .video-container {
+    .video_container {
       position: relative;
       width: 100%;
       aspect-ratio: 3/4;
@@ -26,14 +26,23 @@
       border-radius: 18px;
       background: #222;
     }
-    .scanner-corners {
+    .scanner_corners {
       position: absolute;
       width: 65%;
       aspect-ratio: 1/1;
-      top: 50%; left: 50%;
+      top: 50%;
+      left: 50%;
       transform: translate(-50%, -50%);
       pointer-events: none;
       z-index: 12;
+    }
+    .scanner_window {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      border-radius: 14px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.62);
+      background: rgba(30,30,30,0.06);
+      pointer-events: none;
     }
     .corner {
       position: absolute;
@@ -46,33 +55,12 @@
       filter: drop-shadow(0 2px 8px rgba(0,0,0,.10));
       transition: border-color 0.35s, box-shadow 0.35s;
     }
-    .corner.success {
-      border-color: #28a745 !important;
-      box-shadow: 0 0 10px #28a74550;
-    }
-    .corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
-    .corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
-    .corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
-    .corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
-    .scanner-mask {
-      position: absolute; top:0; left:0; width:100%; height:100%; z-index:9;
-      pointer-events: none;
-      background: linear-gradient(135deg,rgba(44,62,80,.08),rgba(0,0,0,.20) 70%);
-    }
-    .scanner-mask::before {
-      content: "";
-      position: absolute;
-      width: 65%;
-      aspect-ratio: 1/1;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: none;
-      box-shadow: 0 0 0 9999px rgba(0,0,0,0.62);
-      border-radius: 14px;
-      pointer-events: none;
-    }
-    .scanner-instruction {
+    .corner_success { border-color: #28a745 !important; box-shadow: 0 0 10px #28a74550;}
+    .corner_tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+    .corner_tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+    .corner_bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+    .corner_br { bottom: 0; right: 0; border-left: none; border-top: none; }
+    .scanner_instruction {
       position: absolute;
       top: 11%;
       width: 100%;
@@ -85,7 +73,7 @@
       z-index: 15;
       filter: drop-shadow(0 2px 8px #0a065a15);
     }
-    .scan-success-message {
+    .scan_success_message {
       position: absolute;
       top: 54%;
       left: 50%;
@@ -104,11 +92,11 @@
       border: 1.5px solid #3fe58450;
       text-align: center;
     }
-    .static-check {
+    .static_check {
       display: block;
       margin: 0 auto 0.2rem auto;
     }
-    .success-text {
+    .success_text {
       font-size: 1.32rem;
       color: #fff;
       font-weight: 700;
@@ -118,9 +106,9 @@
     }
     #canvas { display: none; }
     @media (max-width:600px){
-      .video-container { border-radius: 9px; }
-      .scanner-corners{ width: 95%; }
-      .scan-success-message { min-width:0; padding:1.2rem 0.7rem; }
+      .video_container { border-radius: 9px; }
+      .scanner_corners{ width: 95%; }
+      .scan_success_message { min-width:0; padding:1.2rem 0.7rem; }
     }
   </style>
 </head>
@@ -128,15 +116,15 @@
   <h1 class="mb-4">雲端發票 QR Code 掃描</h1>
   <div class="mb-4">
     <p><strong>最近掃描：</strong></p>
-    <p>發票號碼：<span id="last-invoice-number">-</span></p>
-    <p>發票日期：<span id="last-invoice-date">-</span></p>
-    <p>隨機碼：<span id="last-random-code">-</span></p>
-    <p>總金額 (含稅)：<span id="total-amount">-</span> 元</p>
+    <p>發票號碼：<span id="last_invoice_number">-</span></p>
+    <p>發票日期：<span id="last_invoice_date">-</span></p>
+    <p>隨機碼：<span id="last_random_code">-</span></p>
+    <p>總金額 (含稅)：<span id="total_amount">-</span> 元</p>
     <p>賣方統編：<span id="seller_id">-</span></p>
     <p>買方統編：<span id="buyer_id">-</span></p>
   </div>
-  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scanModal">開始掃描</button>
-  <div class="modal fade" id="scanModal" tabindex="-1" aria-hidden="true">
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scan_modal">開始掃描</button>
+  <div class="modal fade" id="scan_modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen">
       <div class="modal-content bg-dark text-white">
         <div class="modal-header border-0">
@@ -144,24 +132,24 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body p-0 position-relative">
-          <div class="video-container">
+          <div class="video_container">
             <video id="video" playsinline></video>
             <canvas id="canvas"></canvas>
-            <div class="scanner-mask"></div>
-            <div class="scanner-corners">
-              <div class="corner tl"></div>
-              <div class="corner tr"></div>
-              <div class="corner bl"></div>
-              <div class="corner br"></div>
-              <div class="scan-success-message" id="scanSuccessMsg">
-                <svg class="static-check" width="40" height="40" viewBox="0 0 24 24">
+            <div class="scanner_corners">
+              <div class="scanner_window"></div>
+              <div class="corner corner_tl"></div>
+              <div class="corner corner_tr"></div>
+              <div class="corner corner_bl"></div>
+              <div class="corner corner_br"></div>
+              <div class="scan_success_message" id="scan_success_message">
+                <svg class="static_check" width="40" height="40" viewBox="0 0 24 24">
                   <circle cx="12" cy="12" r="12" fill="#28a745" opacity="0.14"/>
                   <path d="M7 13l3 3 7-7" stroke="#28a745" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                 </svg>
-                <div class="success-text">掃描成功</div>
+                <div class="success_text">掃描成功</div>
               </div>
             </div>
-            <div class="scanner-instruction">
+            <div class="scanner_instruction">
               請掃描電子發票左側的 QR Code<br /><small>(使用須知與更多說明)</small>
             </div>
           </div>
@@ -173,26 +161,26 @@
 const $video = $('#video');
 const $canvas_element = $('#canvas');
 const canvas = $canvas_element[0].getContext("2d");
-const $last_invoice_number = $('#last-invoice-number');
-const $last_invoice_date = $('#last-invoice-date');
-const $last_random_code = $('#last-random-code');
-const $total_amount = $('#total-amount');
+const $last_invoice_number = $('#last_invoice_number');
+const $last_invoice_date = $('#last_invoice_date');
+const $last_random_code = $('#last_random_code');
+const $total_amount = $('#total_amount');
 const $seller_id = $('#seller_id');
 const $buyer_id = $('#buyer_id');
 const $corners = $('.corner');
-const $scan_message = $('#scanSuccessMsg');
+const $scan_success_message = $('#scan_success_message');
 let stream = null;
 let scanning = false;
 let current_track = null;
 let capabilities = null;
-let scanTimeout = null;
+let scan_timeout = null;
 
-function resetScanMessage() {
-  $scan_message.hide();
+function reset_scan_success_message() {
+  $scan_success_message.hide();
 }
 async function start_scan() {
-  $corners.removeClass('success');
-  resetScanMessage();
+  $corners.removeClass('corner_success');
+  reset_scan_success_message();
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
@@ -223,9 +211,9 @@ function stop_scan() {
     stream = null;
   }
   scanning = false;
-  $corners.removeClass('success');
-  resetScanMessage();
-  if (scanTimeout) clearTimeout(scanTimeout);
+  $corners.removeClass('corner_success');
+  reset_scan_success_message();
+  if (scan_timeout) clearTimeout(scan_timeout);
 }
 function tick() {
   if (!scanning || $video[0].readyState !== $video[0].HAVE_ENOUGH_DATA) return;
@@ -255,7 +243,6 @@ function tick() {
       const amount = parseInt(amount_hex, 16);
       const date = `${parseInt(date_str.substring(0, 3), 10) + 1911}-${date_str.substring(3, 5)}-${date_str.substring(5, 7)}`;
       if (/^[A-Z]{2}\d{8}$/.test(num)) {
-        // 資訊顯示在外部
         $last_invoice_number.text(num);
         $last_invoice_date.text(date);
         $last_random_code.text(rand);
@@ -264,14 +251,14 @@ function tick() {
         $seller_id.text(seller);
 
         if (navigator.vibrate) navigator.vibrate(300);
-        $corners.addClass('success');
-        $scan_message.fadeIn(120);
+        $corners.addClass('corner_success');
+        $scan_success_message.fadeIn(120);
 
         scanning = false;
 
-        scanTimeout = setTimeout(() => {
-          $scan_message.fadeOut(200);
-          const modal = bootstrap.Modal.getInstance($('#scanModal')[0]);
+        scan_timeout = setTimeout(() => {
+          $scan_success_message.fadeOut(200);
+          const modal = bootstrap.Modal.getInstance($('#scan_modal')[0]);
           if(modal) modal.hide();
         }, 1300);
         return;
@@ -282,8 +269,8 @@ function tick() {
   }
   if (scanning) requestAnimationFrame(tick);
 }
-$('#scanModal').on('shown.bs.modal', () => start_scan());
-$('#scanModal').on('hidden.bs.modal', () => stop_scan());
+$('#scan_modal').on('shown.bs.modal', () => start_scan());
+$('#scan_modal').on('hidden.bs.modal', () => stop_scan());
 </script>
 </body>
 </html>
