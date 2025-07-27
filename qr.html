@@ -8,166 +8,145 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
   <style>
-    body {
-      background-color: #f8f9fa;
-    }
-
+    body { background-color: #f8f9fa; }
     .video-container {
       position: relative;
       width: 100%;
       aspect-ratio: 3/4;
+      background: #222;
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 4px 28px rgba(0,0,0,0.11);
     }
-
     #video {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      border-radius: 22px;
+      background: #2a2a2a;
     }
-
     .scanner-corners {
       position: absolute;
-      width: 60%;
+      width: 65%;
       aspect-ratio: 1/1;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       pointer-events: none;
       z-index: 12;
     }
-
     .corner {
       position: absolute;
-      width: 45px;
-      height: 45px;
-      border: 10px solid #abb3b6;
-      border-radius: 1px;
+      width: 34px;
+      height: 34px;
+      border: 5px solid #d2dee6;
+      border-radius: 11px;
       box-sizing: border-box;
-      transition: border-color 0.3s;
+      background: none;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,.13));
+      transition: border-color 0.35s, box-shadow 0.35s;
     }
-
     .corner.success {
-      border-color: #28a745 !important;
+      border-color: #28d965 !important;
+      box-shadow: 0 0 14px #28d96590;
     }
-
     .corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
     .corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
     .corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
     .corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
-
     .scanner-mask {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 9;
+      position: absolute; top:0; left:0; width:100%; height:100%; z-index:9;
       pointer-events: none;
+      background: linear-gradient(135deg,rgba(44,62,80,.13),rgba(0,0,0,.35) 70%);
     }
-
     .scanner-mask::before {
       content: "";
       position: absolute;
-      width: 60%;
-      aspect-ratio: 1 / 1;
+      width: 65%;
+      aspect-ratio: 1/1;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background-color: rgba(0, 0, 0, 0);
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+      background: none;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.65);
+      border-radius: 18px;
       pointer-events: none;
     }
-
     .scanner-instruction {
       position: absolute;
-      top: 12%;
+      top: 10%;
       width: 100%;
       text-align: center;
-      color: white;
-      font-size: 1rem;
-      font-weight: bold;
-      text-shadow: 0 0 5px black;
+      color: #fff;
+      font-size: 1.06rem;
+      font-weight: 600;
+      text-shadow: 0 2px 12px #000b;
+      letter-spacing: 0.03em;
       z-index: 15;
+      filter: drop-shadow(0 2px 8px #0a065a20);
     }
-
     .scan-success-message {
       position: absolute;
-      top: 50%;
+      top: 54%;
       left: 50%;
       transform: translate(-50%, -50%);
       z-index: 16;
-      padding: 2rem;
-      background: rgba(40, 167, 69, 0.85);
-      border-radius: 16px;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-      text-align: center;
-      animation: fadeIn 0.4s ease-out;
+      min-width: 180px;
+      padding: 2rem 2.2rem 1.3rem 2.2rem;
+      background: rgba(40,167,69,0.85);
+      border-radius: 20px;
+      box-shadow: 0 8px 28px 0 rgba(40,167,69,.12),0 0 0 5px rgba(40,167,69,.12);
+      backdrop-filter: blur(12px);
       display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.7rem;
+      animation: fadeIn 0.35s cubic-bezier(.32,.72,.43,1.27);
+      border: 1.5px solid #3fe58477;
     }
-
-    .checkmark {
-      width: 72px;
-      height: 72px;
+    .scan-success-message .checkmark {
+      width: 64px; height: 64px;
+      display: block;
       stroke: #fff;
       stroke-width: 4;
       stroke-linecap: round;
       stroke-linejoin: round;
       fill: none;
-      margin: 0 auto 0.5rem;
-      animation: scaleIn 0.3s ease-out;
+      margin: 0 auto 0.3rem auto;
+      filter: drop-shadow(0 4px 10px #49f79755);
+      background: none;
     }
-
-    .checkmark-circle {
+    .scan-success-message .checkmark-circle {
       stroke-dasharray: 166;
       stroke-dashoffset: 166;
       animation: stroke 0.6s forwards;
     }
-
-    .checkmark-check {
+    .scan-success-message .checkmark-check {
       stroke-dasharray: 48;
       stroke-dashoffset: 48;
       animation: stroke 0.4s 0.4s forwards;
     }
-
-    .success-text {
-      font-size: 1.5rem;
-      color: white;
-      font-weight: 600;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    .scan-success-message .success-text {
+      font-size: 1.45rem;
+      color: #fff;
+      font-weight: 700;
+      text-shadow: 0 1px 10px #31ffb933, 0 1px 4px #202b;
+      letter-spacing: 0.01em;
+      margin-top: 0.05rem;
+      user-select: none;
     }
-
     @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translate(-50%, -40%);
-      }
-      to {
-        opacity: 1;
-        transform: translate(-50%, -50%);
-      }
+      from { opacity: 0; transform: translate(-50%,-65%) scale(0.91);}
+      to   { opacity: 1; transform: translate(-50%,-50%) scale(1);}
     }
-
     @keyframes stroke {
-      to {
-        stroke-dashoffset: 0;
-      }
+      to { stroke-dashoffset: 0; }
     }
-
-    @keyframes scaleIn {
-      0% {
-        transform: scale(0.7);
-        opacity: 0;
-      }
-      100% {
-        transform: scale(1);
-        opacity: 1;
-      }
-    }
-
-    #canvas {
-      display: none;
+    #canvas { display: none; }
+    @media (max-width:600px){
+      .video-container { border-radius: 10px; }
+      .scanner-corners{ width: 95%; }
+      .scan-success-message { min-width:0; padding:1.5rem 0.7rem; }
     }
   </style>
 </head>
@@ -182,9 +161,7 @@
     <p>賣方統編：<span id="seller_id">-</span></p>
     <p>買方統編：<span id="buyer_id">-</span></p>
   </div>
-
   <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scanModal">開始掃描</button>
-
   <div class="modal fade" id="scanModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen">
       <div class="modal-content bg-dark text-white">
@@ -202,7 +179,7 @@
               <div class="corner tr"></div>
               <div class="corner bl"></div>
               <div class="corner br"></div>
-              <div class="scan-success-message">
+              <div class="scan-success-message" id="scanSuccessMsg">
                 <svg class="checkmark" viewBox="0 0 52 52">
                   <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none" />
                   <path class="checkmark-check" fill="none" d="M14 27l7 7 17-17" />
@@ -218,125 +195,133 @@
       </div>
     </div>
   </div>
+<script>
+const $video = $('#video');
+const $canvas_element = $('#canvas');
+const canvas = $canvas_element[0].getContext("2d");
+const $last_invoice_number = $('#last-invoice-number');
+const $last_invoice_date = $('#last-invoice-date');
+const $last_random_code = $('#last-random-code');
+const $total_amount = $('#total-amount');
+const $seller_id = $('#seller_id');
+const $buyer_id = $('#buyer_id');
+const $corners = $('.corner');
+const $scan_message = $('#scanSuccessMsg');
 
-  <script>
-    const $video = $('#video');
-    const $canvas_element = $('#canvas');
-    const canvas = $canvas_element[0].getContext("2d");
+let stream = null;
+let scanning = false;
+let current_track = null;
+let capabilities = null;
+let scanTimeout = null;
 
-    const $last_invoice_number = $('#last-invoice-number');
-    const $last_invoice_date = $('#last-invoice-date');
-    const $last_random_code = $('#last-random-code');
-    const $total_amount = $('#total-amount');
-    const $seller_id = $('#seller_id');
-    const $buyer_id = $('#buyer_id');
-    const $scan_message = $('.scan-success-message');
-    const $corners = $('.corner');
-
-    let stream = null;
-    let scanning = false;
-    let current_track = null;
-    let capabilities = null;
-
-    async function start_scan() {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "environment",
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
-          }
-        });
-
-        $video[0].srcObject = stream;
-        await $video[0].play();
-
-        current_track = stream.getVideoTracks()[0];
-        capabilities = current_track.getCapabilities?.();
-
-        if (capabilities?.zoom) {
-          await current_track.applyConstraints({
-            advanced: [{ zoom: Math.min(2.75, capabilities.zoom.max || 2.75) }]
-          });
-        }
-
-        scanning = true;
-        requestAnimationFrame(tick);
-      } catch (err) {
-        alert("無法啟動相機: " + err.message);
+function resetScanMessage() {
+  $scan_message.hide();
+  // 強制重啟 SVG 動畫
+  let $svg = $scan_message.find('.checkmark');
+  let $circle = $svg.find('.checkmark-circle');
+  let $check = $svg.find('.checkmark-check');
+  $circle.css('animation', 'none');
+  $check.css('animation', 'none');
+  void $svg[0].offsetWidth; // 強制 reflow
+  $circle.css('animation', null);
+  $check.css('animation', null);
+}
+async function start_scan() {
+  try {
+    // 每次進入掃描都要重設四角和成功提示
+    $corners.removeClass('success');
+    resetScanMessage();
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "environment",
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       }
-    }
-
-    function stop_scan() {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        $video[0].srcObject = null;
-        stream = null;
-      }
-      scanning = false;
-      $corners.removeClass('success');
-      $scan_message.hide();
-    }
-
-    function tick() {
-      if (!scanning || $video[0].readyState !== $video[0].HAVE_ENOUGH_DATA) return;
-
-      $canvas_element.prop("width", $video[0].videoWidth);
-      $canvas_element.prop("height", $video[0].videoHeight);
-      canvas.drawImage($video[0], 0, 0, $canvas_element[0].width, $canvas_element[0].height);
-
-      const crop_x = $canvas_element[0].width * 0.2;
-      const crop_y = $canvas_element[0].height * 0.2;
-      const crop_width = $canvas_element[0].width * 0.6;
-      const crop_height = $canvas_element[0].height * 0.6;
-      const cropped = canvas.getImageData(crop_x, crop_y, crop_width, crop_height);
-
-      const code = jsQR(cropped.data, crop_width, crop_height, {
-        inversionAttempts: "dontInvert"
+    });
+    $video[0].srcObject = stream;
+    await $video[0].play();
+    current_track = stream.getVideoTracks()[0];
+    capabilities = current_track.getCapabilities?.();
+    if (capabilities?.zoom) {
+      await current_track.applyConstraints({
+        advanced: [{ zoom: Math.min(2.75, capabilities.zoom.max || 2.75) }]
       });
-
-      if (code?.data?.length >= 77) {
-        try {
-          const d = code.data;
-          const num = d.substring(0, 10);
-          const date_str = d.substring(10, 17);
-          const rand = d.substring(17, 21);
-          const amount_hex = d.substring(29, 37);
-          const buyer = d.substring(37, 45);
-          const seller = d.substring(45, 53);
-          const amount = parseInt(amount_hex, 16);
-          const date = `${parseInt(date_str.substring(0, 3), 10) + 1911}-${date_str.substring(3, 5)}-${date_str.substring(5, 7)}`;
-
-          if (/^[A-Z]{2}\d{8}$/.test(num)) {
-            $last_invoice_number.text(num);
-            $last_invoice_date.text(date);
-            $last_random_code.text(rand);
-            $total_amount.text(amount);
-            $buyer_id.text(buyer);
-            $seller_id.text(seller);
-
-            if (navigator.vibrate) navigator.vibrate(300);
-            $corners.addClass('success');
-            $scan_message.fadeIn();
-            scanning = false;
-
-            setTimeout(() => {
-              $scan_message.fadeOut();
-              const modal = bootstrap.Modal.getInstance($('#scanModal')[0]);
-              modal.hide();
-            }, 1500);
-            return;
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
-
-      if (scanning) requestAnimationFrame(tick);
     }
+    scanning = true;
+    requestAnimationFrame(tick);
+  } catch (err) {
+    alert("無法啟動相機: " + err.message);
+  }
+}
+function stop_scan() {
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    $video[0].srcObject = null;
+    stream = null;
+  }
+  scanning = false;
+  $corners.removeClass('success');
+  resetScanMessage();
+  if (scanTimeout) clearTimeout(scanTimeout);
+}
+function tick() {
+  if (!scanning || $video[0].readyState !== $video[0].HAVE_ENOUGH_DATA) return;
+  $canvas_element.prop("width", $video[0].videoWidth);
+  $canvas_element.prop("height", $video[0].videoHeight);
+  canvas.drawImage($video[0], 0, 0, $canvas_element[0].width, $canvas_element[0].height);
 
-    $('#scanModal').on('shown.bs.modal', () => start_scan());
-    $('#scanModal').on('hidden.bs.modal', () => stop_scan());
-  </script>
+  const crop_x = $canvas_element[0].width * 0.175;
+  const crop_y = $canvas_element[0].height * 0.175;
+  const crop_width = $canvas_element[0].width * 0.65;
+  const crop_height = $canvas_element[0].height * 0.65;
+  const cropped = canvas.getImageData(crop_x, crop_y, crop_width, crop_height);
+
+  const code = jsQR(cropped.data, crop_width, crop_height, {
+    inversionAttempts: "dontInvert"
+  });
+
+  if (code?.data?.length >= 77) {
+    try {
+      const d = code.data;
+      const num = d.substring(0, 10);
+      const date_str = d.substring(10, 17);
+      const rand = d.substring(17, 21);
+      const amount_hex = d.substring(29, 37);
+      const buyer = d.substring(37, 45);
+      const seller = d.substring(45, 53);
+      const amount = parseInt(amount_hex, 16);
+      const date = `${parseInt(date_str.substring(0, 3), 10) + 1911}-${date_str.substring(3, 5)}-${date_str.substring(5, 7)}`;
+      if (/^[A-Z]{2}\d{8}$/.test(num)) {
+        // 資訊顯示在外部
+        $last_invoice_number.text(num);
+        $last_invoice_date.text(date);
+        $last_random_code.text(rand);
+        $total_amount.text(amount);
+        $buyer_id.text(buyer);
+        $seller_id.text(seller);
+
+        if (navigator.vibrate) navigator.vibrate(300);
+        $corners.addClass('success');
+        resetScanMessage(); // reset SVG
+        $scan_message.fadeIn(120);
+
+        scanning = false;
+
+        scanTimeout = setTimeout(() => {
+          $scan_message.fadeOut(220);
+          const modal = bootstrap.Modal.getInstance($('#scanModal')[0]);
+          if(modal) modal.hide();
+        }, 1400);
+        return;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  if (scanning) requestAnimationFrame(tick);
+}
+$('#scanModal').on('shown.bs.modal', () => start_scan());
+$('#scanModal').on('hidden.bs.modal', () => stop_scan());
+</script>
 </body>
 </html>
