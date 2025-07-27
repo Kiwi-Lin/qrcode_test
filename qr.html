@@ -10,6 +10,8 @@
     />
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
     <style>
       body {
         background-color: #f8f9fa;
@@ -27,7 +29,6 @@
         object-fit: cover;
       }
 
-      /* 四角掃描框 */
       .scanner-corners {
         position: absolute;
         width: 60%;
@@ -125,6 +126,8 @@
       <p>發票日期：<span id="last-invoice-date">-</span></p>
       <p>隨機碼：<span id="last-random-code">-</span></p>
       <p>總金額 (含稅)：<span id="total-amount">-</span> 元</p>
+      <p>賣方統編：<span id="seller_id">-</span></p>
+      <p>買方統編：<span id="buyer_id">-</span></p>
     </div>
 
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scanModal">
@@ -151,9 +154,7 @@
                 <div class="corner br"></div>
               </div>
               <div class="scanner-instruction">
-                請掃描電子發票左側的 QR Code<br /><small
-                  >(使用須知與更多說明)</small
-                >
+                請掃描電子發票左側的 QR Code<br /><small>(使用須知與更多說明)</small>
               </div>
               <div id="scan-success" style="display: none; position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%); z-index: 20;" class="text-center w-100">
                 <div class="bg-success text-white rounded-4 p-4 fs-3 shadow">
@@ -168,42 +169,46 @@
     </div>
 
     <script>
-      const video = document.getElementById("video");
-      const canvasElement = document.getElementById("canvas");
-      const canvas = canvasElement.getContext("2d");
+      const $video = $('#video');
+      const $canvas_element = $('#canvas');
+      const canvas = $canvas_element[0].getContext("2d");
 
-      const lastInvoiceNumber = document.getElementById("last-invoice-number");
-      const lastInvoiceDate = document.getElementById("last-invoice-date");
-      const lastRandomCode = document.getElementById("last-random-code");
-      const totalAmount = document.getElementById("total-amount");
-      const scanSuccess = document.getElementById("scan-success");
-      const scanDetail = document.getElementById("scan-detail");
+      const $last_invoice_number = $('#last-invoice-number');
+      const $last_invoice_date = $('#last-invoice-date');
+      const $last_random_code = $('#last-random-code');
+      const $total_amount = $('#total-amount');
+      const $seller_id = $('#seller_id');
+      const $buyer_id = $('#buyer_id');
+      const $scan_success = $('#scan-success');
+      const $scan_detail = $('#scan-detail');
 
       let stream = null;
       let scanning = false;
-      let currentTrack = null;
+      let current_track = null;
       let capabilities = null;
 
-      async function startScan() {
+      async function start_scan() {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: {
               facingMode: "environment",
               width: { ideal: 1920 },
-              height: { ideal: 1080 },
-            },
+              height: { ideal: 1080 }
+            }
           });
-          video.srcObject = stream;
-          await video.play();
-          currentTrack = stream.getVideoTracks()[0];
-          capabilities = currentTrack.getCapabilities?.();
+
+          $video[0].srcObject = stream;
+          await $video[0].play();
+
+          current_track = stream.getVideoTracks()[0];
+          capabilities = current_track.getCapabilities?.();
+
           if (capabilities?.zoom) {
-            await currentTrack.applyConstraints({
-              advanced: [
-                { zoom: Math.min(2.75, capabilities.zoom.max || 2.75) },
-              ],
+            await current_track.applyConstraints({
+              advanced: [{ zoom: Math.min(2.75, capabilities.zoom.max || 2.75) }]
             });
           }
+
           scanning = true;
           requestAnimationFrame(tick);
         } catch (err) {
@@ -211,79 +216,69 @@
         }
       }
 
-      function stopScan() {
+      function stop_scan() {
         if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
-          video.srcObject = null;
+          stream.getTracks().forEach(track => track.stop());
+          $video[0].srcObject = null;
           stream = null;
         }
         scanning = false;
       }
 
       function tick() {
-        if (!scanning || video.readyState !== video.HAVE_ENOUGH_DATA) return;
-        canvasElement.width = video.videoWidth;
-        canvasElement.height = video.videoHeight;
-        canvas.drawImage(
-          video,
-          0,
-          0,
-          canvasElement.width,
-          canvasElement.height
-        );
+        if (!scanning || $video[0].readyState !== $video[0].HAVE_ENOUGH_DATA) return;
 
-        // 計算中央正方形掃描區域
-        const cropX = canvasElement.width * 0.2;
-        const cropY = canvasElement.height * 0.2;
-        const cropWidth = canvasElement.width * 0.6;
-        const cropHeight = canvasElement.height * 0.6;
-        const cropped = canvas.getImageData(
-          cropX,
-          cropY,
-          cropWidth,
-          cropHeight
-        );
+        $canvas_element.prop("width", $video[0].videoWidth);
+        $canvas_element.prop("height", $video[0].videoHeight);
+        canvas.drawImage($video[0], 0, 0, $canvas_element[0].width, $canvas_element[0].height);
 
-        const code = jsQR(cropped.data, cropWidth, cropHeight, {
-          inversionAttempts: "dontInvert",
+        const crop_x = $canvas_element[0].width * 0.2;
+        const crop_y = $canvas_element[0].height * 0.2;
+        const crop_width = $canvas_element[0].width * 0.6;
+        const crop_height = $canvas_element[0].height * 0.6;
+        const cropped = canvas.getImageData(crop_x, crop_y, crop_width, crop_height);
+
+        const code = jsQR(cropped.data, crop_width, crop_height, {
+          inversionAttempts: "dontInvert"
         });
 
         if (code?.data?.length >= 77) {
           try {
             const d = code.data;
             const num = d.substring(0, 10);
-            const dateStr = d.substring(10, 17);
+            const date_str = d.substring(10, 17);
             const rand = d.substring(17, 21);
-            const amountHex = d.substring(29, 37);
-            const amount = parseInt(amountHex, 16);
-            const date = `${
-              parseInt(dateStr.substring(0, 3), 10) + 1911
-            }-${dateStr.substring(3, 5)}-${dateStr.substring(5, 7)}`;
+            const amount_hex = d.substring(29, 37);
+            const buyer = d.substring(37, 45);
+            const seller = d.substring(45, 53);
+            const amount = parseInt(amount_hex, 16);
+            const date = `${parseInt(date_str.substring(0, 3), 10) + 1911}-${date_str.substring(3, 5)}-${date_str.substring(5, 7)}`;
+
             if (/^[A-Z]{2}\d{8}$/.test(num)) {
-              lastInvoiceNumber.textContent = num;
-              lastInvoiceDate.textContent = date;
-              lastRandomCode.textContent = rand;
-              totalAmount.textContent = amount;
+              $last_invoice_number.text(num);
+              $last_invoice_date.text(date);
+              $last_random_code.text(rand);
+              $total_amount.text(amount);
+              $buyer_id.text(buyer);
+              $seller_id.text(seller);
 
-              // 震動提示
-              if (navigator.vibrate) {
-                navigator.vibrate(300);
-              }
+              if (navigator.vibrate) navigator.vibrate(300);
 
-              // 顯示自訂掃描成功提示
-              scanDetail.innerHTML = `
-          <div>發票號碼：<b>${num}</b></div>
-          <div>日期：${date}</div>
-          <div>隨機碼：${rand}</div>
-          <div>金額：${amount} 元</div>
-        `;
-              scanSuccess.style.display = "block";
+              $scan_detail.html(`
+                <div>發票號碼：<b>${num}</b></div>
+                <div>日期：${date}</div>
+                <div>隨機碼：${rand}</div>
+                <div>金額：${amount} 元</div>
+                <div>賣方統編：${seller}</div>
+                <div>買方統編：${buyer}</div>
+              `);
+
+              $scan_success.show();
               scanning = false;
+
               setTimeout(() => {
-                scanSuccess.style.display = "none";
-                const modal = bootstrap.Modal.getInstance(
-                  document.getElementById("scanModal")
-                );
+                $scan_success.hide();
+                const modal = bootstrap.Modal.getInstance($('#scanModal')[0]);
                 modal.hide();
               }, 1500);
               return;
@@ -292,21 +287,17 @@
             console.error(e);
           }
         }
+
         if (scanning) requestAnimationFrame(tick);
       }
 
-      document
-        .getElementById("scanModal")
-        .addEventListener("shown.bs.modal", () => {
-          startScan();
-        });
-
-      document
-        .getElementById("scanModal")
-        .addEventListener("hidden.bs.modal", () => {
-          stopScan();
-          scanSuccess.style.display = "none";
-        });
+      // jQuery 事件綁定
+      $('#scanModal').on('shown.bs.modal', () => start_scan());
+      $('#scanModal').on('hidden.bs.modal', () => {
+        stop_scan();
+        $scan_success.hide();
+      });
     </script>
+    
   </body>
 </html>
